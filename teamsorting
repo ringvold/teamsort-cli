@@ -1,0 +1,17 @@
+{
+    "builtinSolverConfigs": [
+    ],
+    "openFiles": [
+        "teamsorting.mzn",
+        "teamsorting.mzn"
+    ],
+    "openTab": 1,
+    "projectFiles": [
+        "teamsorting.mzn"
+    ],
+    "projectSolverConfigs": [
+    ],
+    "selectedBuiltinConfigId": "org.minizinc.mip.coin-bc",
+    "selectedBuiltinConfigVersion": "2.10/1.17",
+    "version": 105
+}
