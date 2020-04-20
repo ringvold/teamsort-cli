@@ -7,26 +7,26 @@ const fs = require('fs');
 const fsPromise = fs.promises;
 
 const program = Elm.Main.init({
-  flags: { argv: process.argv, versionMessage: "0.0.1" }
+    flags: { argv: process.argv, versionMessage: "0.0.1" }
 });
 
 program.ports.print.subscribe(message => {
-  console.log(message)
+    console.log(message)
 });
+
 program.ports.printAndExitFailure.subscribe(message => {
-  console.log(message);
-  process.exit(1);
+    console.log(message);
+    process.exit(1);
 });
+
 program.ports.printAndExitSuccess.subscribe(message => {
-  console.log(message);
-  process.exit(0);
+    console.log(message);
+    process.exit(0);
 });
 
 program.ports.writeFile.subscribe(writeFile)
 
 program.ports.readFile.subscribe(content => readFile(program, content))
-
-
 
 
 function writeFile(file, content) {
