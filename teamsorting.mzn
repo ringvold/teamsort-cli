@@ -73,7 +73,10 @@ constraint forall(t1 in Teams, t2 in Teams where t1 < t2) (
   
 % Symmetry breaking constraint => last team - first team = greates diff
 solve minimize score[noOfTeams] - score[1];
-output ["\n\t"] ++ [format(30,"team \(t)")| t in Teams] ++
+output outputJSON();
+
+
+/*output ["\n\t"] ++ [format(30,"team \(t)")| t in Teams] ++
        ["\n"] ++
        [ if fix(team[p]) != 0 then
              if t == 1 then 
@@ -95,3 +98,4 @@ output ["\n\t"] ++ [format(30,"team \(t)")| t in Teams] ++
          ["\navg"] ++
          [format(30, show_float(8,2,score[t]/maxPlayersPerTeam) )| t in Teams ] ++
          ["\nmax diff: \(score[noOfTeams] - score[1])"];
+*/

@@ -1,0 +1,7 @@
+node_modules
+elm-stuff
+yarn-error.log
+data.dzn
+inputfile.txt
+cli/build
+teamsorting.sublime-workspace

@@ -17,8 +17,9 @@ programConfig : Program.Config CliOptions
 programConfig =
     Program.config
         |> Program.add
-            (OptionsParser.buildSubCommand "generate" Generate
+            (OptionsParser.buildSubCommand "sort" Generate
                 |> OptionsParser.with (Option.requiredPositionalArg "fileName")
+                |> OptionsParser.withDoc "run sorting algorithm based on input file"
             )
 
 
