@@ -11,9 +11,11 @@ const program = Elm.Main.init({
     flags: { argv: process.argv, versionMessage: '0.0.1' },
 });
 
-program.ports.print.subscribe((message) => {
-    console.log(message);
-});
+// Ports out of Elm
+
+// program.ports.print.subscribe((message) => {
+//     console.log(message);
+// });
 
 program.ports.printAndExitFailure.subscribe((message) => {
     console.log(message);
@@ -25,14 +27,17 @@ program.ports.printAndExitSuccess.subscribe((message) => {
     process.exit(0);
 });
 
-program.ports.writeFile.subscribe(writeFile);
+// Port into Elm
+// program.ports.writeFile.subscribe(writeFile);
 
 program.ports.readFile.subscribe((content) => readFile(program, content));
 
-function writeFile(file, content) {
-    return fsPromise
-        .writeFile(file[0], file[1])
-        .catch((err) => console.log(err));
+program.ports.runSolver.subscribe(runSolver);
+
+// Functions
+
+function writeFile([file, content]) {
+    return fsPromise.writeFile(file, content).catch((err) => console.log(err));
 }
 
 function readFile(program, file) {
@@ -42,4 +47,10 @@ function readFile(program, file) {
             program.ports.fileReceive.send(content.toString('utf-8'));
         })
         .catch((err) => console.log(err));
+}
+
+function runSolver([ranks, preference]) {
+    console.log("ranks",ranks);
+    console.log("preference",preference);
+    minizinc(ranks, preference).then(program.ports.receiveSolverResult.send);
 }

@@ -4,7 +4,7 @@
     "build:elm": "elm make src/Main.elm --output build/Main.js --optimize",
     "build:ts": "tsc src/teamsort.ts --outDir build; chmod +x build/teamsort.js",
     "watch": "concurrently -c cyan,yellow \"npm:watch:elm\" \"npm:watch:ts\" ",
-    "watch:elm": "nodemon -w src -e elm --exec \"elm make src/Main.elm --output build/Main.js --optimize\"",
+    "watch:elm": "nodemon -w src -e elm --exec \"elm make src/Main.elm --output build/Main.js\"",
     "watch:ts": "tsc-watch src/teamsort.ts --noClear --outDir ./build ",
     "watch:minizinc": "tsc-watch src/minizinc.ts --noClear --outDir ./build --onSuccess \"node ./build/minizinc.js\""
   },

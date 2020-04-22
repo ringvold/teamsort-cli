@@ -1,12 +1,16 @@
-port module Main exposing (Input, generateDznFile, inputParser)
+port module Main exposing (Player, playerParser)
 
 import Array
 import Cli.Option as Option
 import Cli.OptionsParser as OptionsParser
 import Cli.Program as Program
+import Json.Decode as JD
 import List
+import List.Extra
 import Result.Extra
+import SolverResult exposing (SolverResult, solverResultDecoder)
 import String.Interpolate exposing (interpolate)
+import Tuple
 
 
 type CliOptions
@@ -25,10 +29,12 @@ programConfig =
 
 type Msg
     = FileReceived String
+    | SolverResultReceived SolverResult
+    | ErrorFromSubs String
 
 
 type alias Model =
-    ()
+    { players : List Player }
 
 
 type alias Flags =
@@ -37,108 +43,190 @@ type alias Flags =
 
 init : Flags -> CliOptions -> ( Model, Cmd Msg )
 init flags cliOptions =
+    let
+        initModel =
+            { players = [] }
+    in
     case cliOptions of
         Generate fileName ->
-            ( (), readFile fileName )
+            ( initModel, readFile fileName )
 
 
 update : CliOptions -> Msg -> Model -> ( Model, Cmd Msg )
 update cliOptions msg model =
     case msg of
         FileReceived content ->
+            sortCommand model content
+
+        SolverResultReceived result ->
+            let
+                teams =
+                    resultToTeams result model.players
+            in
             ( model
-            , generateCommand content
+            , teamsToString teams
+                |> printAndExitSuccess
+            )
+
+        ErrorFromSubs error ->
+            ( model, printAndExitFailure error )
+
+
+resultToTeams : SolverResult -> List Player -> List Team
+resultToTeams result players =
+    List.Extra.zip result.output.team players
+        |> List.Extra.gatherEqualsBy Tuple.first
+        |> List.sortBy (Tuple.first << Tuple.first)
+        |> List.map
+            (\( firstTuple, rest ) ->
+                let
+                    teamPlayers : List Player
+                    teamPlayers =
+                        List.map Tuple.second rest
+
+                    fullTeam =
+                        Tuple.second firstTuple :: teamPlayers
+                in
+                { name = String.fromInt <| Tuple.first firstTuple
+                , players = fullTeam
+                , score = fullTeam |> List.map .rank |> List.sum
+                }
             )
 
 
-generateCommand : String -> Cmd Msg
-generateCommand string =
-    let
-        printAndSave ( file, content ) =
-            Cmd.batch
-                [ print <| "\nCopy the following into data.dzn:\n\n" ++ content
-                , writeFile ( file, content )
-                ]
-    in
-    case parseInput string of
-        Ok list ->
-            generateDznFile list
-                |> Tuple.pair "data.dzn"
-                |> printAndSave
+sortCommand : Model -> String -> ( Model, Cmd Msg )
+sortCommand model input =
+    case parsePlayers input of
+        Ok players ->
+            let
+                ranks =
+                    List.map .rank players
+
+                preference =
+                    List.map .teamPreference players
+            in
+            ( { model | players = players }
+            , runSolver ( ranks, preference )
+            )
 
         Err error ->
-            printAndExitFailure error
+            ( model, printAndExitFailure error )
 
 
-generateDznFile : List Input -> String
-generateDznFile input =
-    let
-        ranks =
-            List.map (.rank >> String.fromInt) input
-                |> String.join ","
-
-        descriptions =
-            input
-                |> List.map
-                    (\cur ->
-                        interpolate
-                            "\"{0} {1}\""
-                            [ cur.description, String.fromInt cur.rank ]
-                    )
-                |> String.join ","
-    in
-    interpolate """playerRanks = [{0}];
-players = [{1}];
-tonjeIndex = 15;
-haraldIndex = 18;"""
-        [ ranks, descriptions ]
+type alias Team =
+    { name : String
+    , players : List Player
+    , score : Int
+    }
 
 
-type alias Input =
-    { description : String
+teamsToString : List Team -> String
+teamsToString teams =
+    teams
+        |> List.map
+            (\curr ->
+                let
+                    players : List String
+                    players =
+                        curr.players
+                            |> List.sortBy (.rank >> negate)
+                            |> List.map
+                                (\p ->
+                                    String.join
+                                        " "
+                                        [ p.name
+                                        , p.rankName
+                                        , String.fromInt p.rank
+                                        , String.repeat p.teamPreference "*"
+                                        ]
+                                )
+                in
+                String.join ""
+                    [ "# Team " ++ curr.name ++ " \n"
+                    , String.join "\n" players
+                    , "\n"
+                    , String.append "Sum: " <| String.fromInt <| List.sum <| List.map .rank curr.players
+                    , "\n"
+                    ]
+            )
+        |> String.join "\n"
+
+
+type alias Player =
+    { name : String
+    , rankName : String
+    , teamPreference : Int
     , rank : Int
     }
 
 
-parseInput : String -> Result String (List Input)
-parseInput input =
+parsePlayers : String -> Result String (List Player)
+parsePlayers input =
     String.lines input
-        |> Result.Extra.combineMap inputParser
+        |> combineMapWithIndex playerParser
 
 
-inputParser : String -> Result String Input
-inputParser line =
+playerParser : Int -> String -> Result String Player
+playerParser index content =
     let
-        words =
-            String.words line
-                |> Array.fromList
+        columns =
+            String.split "\t" content
+                |> List.filter (not << String.isEmpty)
 
-        size =
-            Array.length words
-
-        desc =
-            Array.slice 0 (size - 1) words
-                |> Array.toList
-                |> String.join " "
-
-        rankInt =
-            Array.get (size - 1) words
-                |> Maybe.andThen String.toInt
-
-        errorMsg =
-            if String.length desc > 0 then
-                "Could not parse line with description " ++ desc
-
-            else
-                "Error parsing input line"
+        lineNumber =
+            index
+                + 1
+                |> String.fromInt
     in
-    if String.isEmpty line then
+    if String.isEmpty content then
         Err "Can not parse empty string"
 
     else
-        Result.fromMaybe
-            errorMsg
-            (Maybe.map (Input desc) rankInt)
+        case columns of
+            [ name, rankName, rank ] ->
+                Result.fromMaybe
+                    ("Could not parse rank for line " ++ lineNumber ++ " with name " ++ name)
+                    (Maybe.map
+                        (Player name rankName 0)
+                        (String.toInt rank)
+                    )
+
+            [ name, rankName, pref, rank ] ->
+                Result.fromMaybe
+                    "Could not parse team preferance and/or rank"
+                    (Maybe.map2
+                        (Player name rankName)
+                        (String.toInt pref)
+                        (String.toInt rank)
+                    )
+
+            name :: rankName :: pref :: rank :: lulz ->
+                Err "ÅH NOES! Too many elements. Does not comprendzz"
+
+            [ name, rank ] ->
+                Maybe.map (Player name "" 0) (String.toInt rank)
+                    |> Result.fromMaybe
+                        ("Could not parse rank for line " ++ lineNumber ++ " with name " ++ name)
+
+            [ rank ] ->
+                Maybe.map
+                    (Player
+                        ("Player " ++ (String.fromInt <| index + 1))
+                        ""
+                        0
+                    )
+                    (String.toInt rank)
+                    |> Result.fromMaybe
+                        "Found only one element and could not parse rank int"
+
+            [] ->
+                Err "OMG! NOTHNG!"
+
+
+
+--Result.fromMaybe
+--    errorMsg
+--    (Maybe.map (Player desc) rankInt)
 
 
 main : Program.StatefulProgram Model Msg CliOptions {}
@@ -157,7 +245,20 @@ subscriptions : a -> Sub Msg
 subscriptions model =
     Sub.batch
         [ fileReceive FileReceived
+        , receiveSolverResult decodeSolverResult
         ]
+
+
+decodeSolverResult : JD.Value -> Msg
+decodeSolverResult json =
+    case JD.decodeValue solverResultDecoder json of
+        Ok list ->
+            SolverResultReceived list
+
+        Err error ->
+            error
+                |> JD.errorToString
+                |> ErrorFromSubs
 
 
 port print : String -> Cmd msg
@@ -172,7 +273,37 @@ port printAndExitSuccess : String -> Cmd msg
 port readFile : String -> Cmd msg
 
 
+port fileReceive : (String -> msg) -> Sub msg
+
+
 port writeFile : ( String, String ) -> Cmd msg
 
 
-port fileReceive : (String -> msg) -> Sub msg
+port runSolver : ( List Int, List Int ) -> Cmd msg
+
+
+port receiveSolverResult : (JD.Value -> msg) -> Sub msg
+
+
+
+-- Combining
+-- Based on code from Result.Extra
+-- https://github.com/elm-community/result-extra/blob/bb8c2461bf7ed9001f0fdd16e0a143bd39b6c03b/src/Result/Extra.elm#L139
+
+
+{-| Combine a list of results into a single result (holding a list).
+Also known as `sequence` on lists.
+-}
+combine : List (Result x a) -> Result x (List a)
+combine =
+    List.foldr (Result.map2 (::)) (Ok [])
+
+
+{-| Map a function producing results on a list
+and combine those into a single result (holding a list).
+Also known as `traverse` on lists.
+combineMap f xs == combine (List.map f xs)
+-}
+combineMapWithIndex : (Int -> a -> Result x b) -> List a -> Result x (List b)
+combineMapWithIndex f =
+    combine << List.indexedMap f
