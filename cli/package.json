@@ -1,8 +1,16 @@
 {
+  "name": "teamsort",
+  "version": "0.0.1",
+  "description": "Cli for generating even teams based on ranks",
+  "author": "Harald Ringvold",
+  "bin": {
+    "teamsort": "build/teamsort.js"
+  },
   "scripts": {
-    "build": "concurrently -c cyan,yellow \"npm:build:elm\" \"npm:build:ts\"",
+    "build": "concurrently -c cyan,yellow \"npm:build:elm\" \"npm:build:ts\" \"npm:build:copy\"",
     "build:elm": "elm make src/Main.elm --output build/Main.js --optimize",
     "build:ts": "tsc src/teamsort.ts --outDir build; chmod +x build/teamsort.js",
+    "build:copy": "cp src/teamsorting.mzn build",
     "watch": "concurrently -c cyan,yellow \"npm:watch:elm\" \"npm:watch:ts\" ",
     "watch:elm": "nodemon -w src -e elm --exec \"elm make src/Main.elm --output build/Main.js\"",
     "watch:ts": "tsc-watch src/teamsort.ts --noClear --outDir ./build ",

@@ -1,6 +1,7 @@
 import CLIMiniZinc from 'minizinc/build/CLIMiniZinc';
 import { IResult, EStatus, IStatistics } from 'minizinc/build';
 import * as fs from 'fs';
+import * as path from 'path';
 
 interface Result {
     status: EStatus;
@@ -10,9 +11,12 @@ interface Result {
 }
 
 export default function solve(ranks: number[], preference?: number[]) {
-    const minizinc = new CLIMiniZinc();
 
-    const model = fs.readFileSync('../teamsorting.mzn', 'utf8');
+    // const modelPath = path.join(__dirname, 'teamsorting.mzn');
+    const modelPath = path.resolve(__dirname, 'teamsorting.mzn')
+    const model = fs.readFileSync(modelPath, 'utf8');
+
+    const minizinc = new CLIMiniZinc();
 
     return minizinc
         .solve(
@@ -24,7 +28,7 @@ export default function solve(ranks: number[], preference?: number[]) {
             }
         )
         .then((result: IResult) => {
-            console.log(result);
+            // console.log(result);
             const output = result.solutions[0].extraOutput;
             const json = JSON.parse(output.split('\n').slice(1).join('\n'));
             return {

@@ -50,7 +50,5 @@ function readFile(program, file) {
 }
 
 function runSolver([ranks, preference]) {
-    console.log("ranks",ranks);
-    console.log("preference",preference);
     minizinc(ranks, preference).then(program.ports.receiveSolverResult.send);
 }
