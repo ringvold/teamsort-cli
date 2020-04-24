@@ -17,7 +17,7 @@ docker build -t teamsort .
 then run it
 
 ```
-docker run -v $(pwd)/input:/input teamsort /input/example.txt
+docker run -v $(pwd)/input:/input --rm teamsort /input/example.txt
 ```
 
 # Installation
