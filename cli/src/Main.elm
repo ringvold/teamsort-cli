@@ -162,9 +162,13 @@ type alias Player =
 
 parsePlayers : String -> Result String (List Player)
 parsePlayers input =
-    String.lines input
-        |> List.filter (not << String.isEmpty)
-        |> combineMapWithIndex playerParser
+    if String.length (String.trim input) == 0 then
+        Err "Empty input file"
+
+    else
+        String.lines input
+            |> List.filter (not << String.isEmpty)
+            |> combineMapWithIndex playerParser
 
 
 playerParser : Int -> String -> Result String Player
