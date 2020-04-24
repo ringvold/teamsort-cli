@@ -1,0 +1,14 @@
+# Ignore everything
+**
+
+# Allow files and directories
+!cli/package.json
+!cli/elm.json
+!cli/src
+!cli/tests
+
+# Ignore unnecessary files inside allowed directories
+**/*~
+**/*.log
+**/.DS_Store
+**/Thumbs.db
