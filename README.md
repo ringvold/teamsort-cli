@@ -7,6 +7,18 @@ This project is created to be used to create teams for CSGO tournaments but coul
 
 For our use the teams generated often needs some manual work to get optimal teams, but is a great tool to get a good starting point to work from. 
 
+# Docker
+
+Build the `Dockerfile`
+```sh
+docker build -t teamsort .
+```
+
+then run it
+
+```
+docker run -v $(pwd)/input:/input teamsort /input/example.txt
+```
 
 # Installation
 
