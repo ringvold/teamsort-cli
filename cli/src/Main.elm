@@ -163,6 +163,7 @@ type alias Player =
 parsePlayers : String -> Result String (List Player)
 parsePlayers input =
     String.lines input
+        |> List.filter (not << String.isEmpty)
         |> combineMapWithIndex playerParser
 
 
@@ -178,49 +179,45 @@ playerParser index content =
                 + 1
                 |> String.fromInt
     in
-    if String.isEmpty content then
-        Err "Can not parse empty string"
-
-    else
-        case columns of
-            [ name, rankName, rank ] ->
-                Result.fromMaybe
-                    ("Could not parse rank for line " ++ lineNumber ++ " with name " ++ name)
-                    (Maybe.map
-                        (Player name rankName 0)
-                        (String.toInt rank)
-                    )
-
-            [ name, rankName, pref, rank ] ->
-                Result.fromMaybe
-                    "Could not parse team preferance and/or rank"
-                    (Maybe.map2
-                        (Player name rankName)
-                        (String.toInt pref)
-                        (String.toInt rank)
-                    )
-
-            name :: rankName :: pref :: rank :: lulz ->
-                Err "ÅH NOES! Too many elements. Does not comprendzz"
-
-            [ name, rank ] ->
-                Maybe.map (Player name "" 0) (String.toInt rank)
-                    |> Result.fromMaybe
-                        ("Could not parse rank for line " ++ lineNumber ++ " with name " ++ name)
-
-            [ rank ] ->
-                Maybe.map
-                    (Player
-                        ("Player " ++ (String.fromInt <| index + 1))
-                        ""
-                        0
-                    )
+    case columns of
+        [ name, rankName, rank ] ->
+            Result.fromMaybe
+                ("Could not parse rank for line " ++ lineNumber ++ " with name " ++ name)
+                (Maybe.map
+                    (Player name rankName 0)
                     (String.toInt rank)
-                    |> Result.fromMaybe
-                        "Found only one element and could not parse rank int"
+                )
 
-            [] ->
-                Err "OMG! NOTHNG!"
+        [ name, rankName, pref, rank ] ->
+            Result.fromMaybe
+                "Could not parse team preferance and/or rank"
+                (Maybe.map2
+                    (Player name rankName)
+                    (String.toInt pref)
+                    (String.toInt rank)
+                )
+
+        name :: rankName :: pref :: rank :: lulz ->
+            Err "ÅH NOES! Too many elements. Does not comprendzz"
+
+        [ name, rank ] ->
+            Maybe.map (Player name "" 0) (String.toInt rank)
+                |> Result.fromMaybe
+                    ("Could not parse rank for line " ++ lineNumber ++ " with name " ++ name)
+
+        [ rank ] ->
+            Maybe.map
+                (Player
+                    ("Player " ++ (String.fromInt <| index + 1))
+                    ""
+                    0
+                )
+                (String.toInt rank)
+                |> Result.fromMaybe
+                    "Found only one element and could not parse rank int"
+
+        [] ->
+            Err "Empty input?"
 
 
 

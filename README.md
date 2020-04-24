@@ -7,6 +7,18 @@ This project is created to be used to create teams for CSGO tournaments but coul
 
 For our use the teams generated often needs some manual work to get optimal teams, but is a great tool to get a good starting point to work from. 
 
+# Docker
+
+Build the `Dockerfile`
+```sh
+docker build -t teamsort .
+```
+
+then run it
+
+```
+docker run -v $(pwd)/input:/input --rm teamsort /input/example.txt
+```
 
 # Installation
 
@@ -14,8 +26,6 @@ For our use the teams generated often needs some manual work to get optimal team
 2. Minizinc and solver  
     Install COIN-OR CBC (https://www.minizinc.org/doc-2.4.2/en/installation_detailed.html) and Minizinc (https://www.minizinc.org/doc-2.4.2/en/installation.html). Note: "MiniZinc contains a built-in interface to CBC, so in order to use it you have to install CBC _before_ compiling MiniZinc."
 3. From cli directory run `npm install` and `npm build`  
-
-_Note: Dockerfile to come soon. Hopefully._
 
 # Usage
 
