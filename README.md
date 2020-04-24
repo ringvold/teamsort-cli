@@ -27,8 +27,6 @@ docker run -v $(pwd)/input:/input --rm teamsort /input/example.txt
     Install COIN-OR CBC (https://www.minizinc.org/doc-2.4.2/en/installation_detailed.html) and Minizinc (https://www.minizinc.org/doc-2.4.2/en/installation.html). Note: "MiniZinc contains a built-in interface to CBC, so in order to use it you have to install CBC _before_ compiling MiniZinc."
 3. From cli directory run `npm install` and `npm build`  
 
-_Note: Dockerfile to come soon. Hopefully._
-
 # Usage
 
 Run `cli/build/teamsorting.js sort <filename>`.
