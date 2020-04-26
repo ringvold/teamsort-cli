@@ -6,3 +6,4 @@ inputfile.txt
 cli/build
 teamsorting.sublime-workspace
 .idea/
+.env

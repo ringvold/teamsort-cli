@@ -26,7 +26,7 @@ array[int] of Rank: playerRanks;
 array[Players] of string: players;
 array[Players] of var {0} union Teams: preference;
 
-    
+ 
 int: maxPlayersPerTeam = 5;
 int: minPlayersPerTeam = 4;
 int: noOfTeams = ceil(noOfPlayers / maxPlayersPerTeam);
@@ -35,7 +35,6 @@ set of int: Players = 1..noOfPlayers;
 set of int: Teams = 1..noOfTeams;
 array[Players] of int: rank = playerRanks;
 array[Players] of var 1..noOfTeams: team;
-
 
 
 array[Teams] of var int: score;
@@ -71,29 +70,3 @@ constraint forall(t1 in Teams, t2 in Teams where t1 < t2) (
 % Symmetry breaking constraint => last team - first team = greates diff
 solve minimize score[noOfTeams] - score[1];
 output outputJSON();
-
-% Replace above output with the following to get richer format in minizincIDE/terminal:
-
-/*output ["\n\t"] ++ [format(30,"team \(t)")| t in Teams] ++
-       ["\n"] ++
-       [ if fix(team[p]) != 0 then
-             if t == 1 then 
-                "\n    " 
-             else 
-                "" 
-             endif ++
-             if fix(team[p]) == t then
-                format(30, players[p])
-             else
-                format(30,"")
-             endif
-         else 
-           format(30,"")
-         endif 
-         | p in Players, t in Teams ] ++
-         ["\nsum"] ++
-         [format(30,show_int(8, score[t])) | t in Teams ] ++
-         ["\navg"] ++
-         [format(30, show_float(8,2,score[t]/maxPlayersPerTeam) )| t in Teams ] ++
-         ["\nmax diff: \(score[noOfTeams] - score[1])"];
-*/
