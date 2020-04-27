@@ -1,7 +1,7 @@
 CSGO Teamsorting
 ================
 
-This project uses Minizinc and the COIN-BC solver to create even teams from a list of players with ranks.
+This project uses [Minizinc](https://www.minizinc.org/) and the [COIN-OR CBC solver](https://github.com/coin-or/Cbc)  to create even teams from a list of players with ranks.
 
 This project is created to be used to create teams for CSGO tournaments but could probably be used in other context with some ajustments.
 
