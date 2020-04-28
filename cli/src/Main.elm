@@ -4,26 +4,45 @@ import Array
 import Cli.Option as Option
 import Cli.OptionsParser as OptionsParser
 import Cli.Program as Program
+import Http
 import Json.Decode as JD
+import Json.Encode as JE
 import List
 import List.Extra
+import Maybe.Extra as ME
 import Result.Extra
 import SolverResult exposing (SolverResult, solverResultDecoder)
 import String.Interpolate exposing (interpolate)
 import Tuple
+import Url.Builder
 
 
 type CliOptions
-    = Generate String
+    = Sort SortOptions
+
+
+type alias SortOptions =
+    { fileName : String
+    , trello : Bool
+    , boardName : Maybe String
+    , trelloKey : Maybe String
+    , trelloToken : Maybe String
+    }
 
 
 programConfig : Program.Config CliOptions
 programConfig =
     Program.config
         |> Program.add
-            (OptionsParser.buildSubCommand "sort" Generate
-                |> OptionsParser.with (Option.requiredPositionalArg "fileName")
-                |> OptionsParser.withDoc "run sorting algorithm based on input file"
+            (OptionsParser.map Sort
+                (OptionsParser.buildSubCommand "sort" SortOptions
+                    |> OptionsParser.with (Option.requiredPositionalArg "fileName")
+                    |> OptionsParser.with (Option.flag "trello")
+                    |> OptionsParser.with (Option.optionalKeywordArg "boardName")
+                    |> OptionsParser.with (Option.optionalKeywordArg "trello-key")
+                    |> OptionsParser.with (Option.optionalKeywordArg "trello-token")
+                    |> OptionsParser.withDoc "run sorting algorithm based on input file"
+                )
             )
 
 
@@ -31,25 +50,77 @@ type Msg
     = FileReceived String
     | SolverResultReceived SolverResult
     | ErrorFromSubs String
+    | TrelloListCreated (Result Http.Error ( Team, TrelloList ))
+    | TrelloCardCreated (Result Http.Error String)
+    | TrelloSearchReceived (Result Http.Error ( List Team, List Board ))
 
 
 type alias Model =
-    { players : List Player }
+    { players : List Player
+    , outputIntegration : OutputIntegration
+    , trelloConfig : Maybe TrelloConfig
+    }
+
+
+type OutputIntegration
+    = Trello TrelloConfig String
+    | Terminal
+    | Unsupported
+
+
+type alias TrelloConfig =
+    { key : String
+    , token : String
+    }
 
 
 type alias Flags =
-    Program.FlagsIncludingArgv {}
+    Program.FlagsIncludingArgv Extras
+
+
+type alias Extras =
+    { trelloKey : Maybe String
+    , trelloToken : Maybe String
+    }
 
 
 init : Flags -> CliOptions -> ( Model, Cmd Msg )
 init flags cliOptions =
     let
         initModel =
-            { players = [] }
+            { players = []
+            , outputIntegration = Terminal
+            , trelloConfig =
+                Maybe.map2
+                    TrelloConfig
+                    flags.trelloKey
+                    flags.trelloToken
+            }
     in
     case cliOptions of
-        Generate fileName ->
-            ( initModel, readFile fileName )
+        Sort options ->
+            if options.trello then
+                let
+                    inlineOrEnvConfig =
+                        Maybe.map2 TrelloConfig options.trelloKey options.trelloToken
+                            |> ME.orElse initModel.trelloConfig
+                in
+                case ( inlineOrEnvConfig, options.boardName ) of
+                    ( Just config, Just boardName ) ->
+                        ( { initModel | outputIntegration = Trello config boardName }
+                        , Cmd.batch
+                            [ readFile options.fileName
+                            ]
+                        )
+
+                    ( _, Nothing ) ->
+                        ( initModel, printAndExitFailure "Board name not found. Use option --boardName to pass it" )
+
+                    _ ->
+                        ( initModel, printAndExitFailure "Can not find trello config. Exiting." )
+
+            else
+                ( initModel, readFile options.fileName )
 
 
 update : CliOptions -> Msg -> Model -> ( Model, Cmd Msg )
@@ -62,14 +133,113 @@ update cliOptions msg model =
             let
                 teams =
                     resultToTeams result model.players
+
+                output =
+                    case model.outputIntegration of
+                        Terminal ->
+                            teamsToString teams
+                                |> printAndExitSuccess
+
+                        Trello config boardName ->
+                            Cmd.batch
+                                [ teamsToString teams
+                                    |> String.append
+                                        ("\nSending result to Trello board \""
+                                            ++ boardName
+                                            ++ "\".\n\n"
+                                        )
+                                    |> print
+                                , trelloSearch config teams
+                                ]
+
+                        Unsupported ->
+                            Cmd.batch
+                                [ print "Unsupported output integration. Using Terminal."
+                                , teamsToString teams
+                                    |> printAndExitSuccess
+                                ]
             in
             ( model
-            , teamsToString teams
-                |> printAndExitSuccess
+            , output
+            )
+
+        TrelloListCreated (Ok ( team, list )) ->
+            case model.outputIntegration of
+                Trello config _ ->
+                    ( model
+                    , Cmd.batch <|
+                        print ("Adding players to list " ++ list.name)
+                            :: List.map
+                                (addPlayerToTrelloList config list)
+                                team.players
+                    )
+
+                _ ->
+                    {- This should not happen, but best way I have found so
+                       far to safely acces trello config
+                    -}
+                    ( model, Cmd.none )
+
+        TrelloListCreated (Err error) ->
+            ( model, print <| errorcheck error )
+
+        TrelloCardCreated (Ok resultString) ->
+            ( model, Cmd.none )
+
+        TrelloCardCreated (Err error) ->
+            ( model, print <| errorcheck error )
+
+        TrelloSearchReceived (Ok ( teams, boards )) ->
+            case model.outputIntegration of
+                Trello config boardName ->
+                    let
+                        boardId =
+                            boards
+                                |> List.Extra.find (.name >> (==) boardName)
+                                |> Maybe.map .id
+                    in
+                    case boardId of
+                        Just id ->
+                            ( model, sendToTrello config id teams )
+
+                        Nothing ->
+                            ( model, print "Could not find the spesified board" )
+
+                _ ->
+                    {- This should not happen, but best way I have found so
+                       far to safely acces trello config
+                    -}
+                    ( model, print "Could not find the spesified board" )
+
+        TrelloSearchReceived (Err error) ->
+            ( model
+            , Cmd.batch
+                [ print <| errorcheck error
+                , print "Board search error:"
+                ]
             )
 
         ErrorFromSubs error ->
             ( model, printAndExitFailure error )
+
+
+errorcheck : Http.Error -> String
+errorcheck error =
+    case error of
+        Http.BadUrl url ->
+            "Bad url: " ++ url
+
+        Http.Timeout ->
+            "HTTP timeout"
+
+        Http.NetworkError ->
+            "Network error"
+
+        Http.BadStatus status ->
+            "Bad status: " ++ String.fromInt status
+
+        Http.BadBody body ->
+            "Bad body: " ++ body
 
 
 resultToTeams : SolverResult -> List Player -> List Team
@@ -225,12 +395,152 @@ playerParser index content =
 
 
 
---Result.fromMaybe
---    errorMsg
---    (Maybe.map (Player desc) rankInt)
+{-
+   Trello
+-}
 
 
-main : Program.StatefulProgram Model Msg CliOptions {}
+trelloSearch : TrelloConfig -> List Team -> Cmd Msg
+trelloSearch config teams =
+    let
+        url =
+            Url.Builder.absolute
+                [ "1/members/me/boards"
+                ]
+                (Url.Builder.string "fields" "name,id"
+                    :: keyAndToken config
+                )
+    in
+    Http.get
+        { url = "https://api.trello.com" ++ url
+        , expect =
+            Http.expectJson TrelloSearchReceived (JD.map (Tuple.pair teams) boardsDecoder)
+        }
+
+
+boardsDecoder : JD.Decoder (List Board)
+boardsDecoder =
+    JD.list boardDecoder
+
+
+type alias Board =
+    { id : String
+    , name : String
+    }
+
+
+boardDecoder : JD.Decoder Board
+boardDecoder =
+    JD.map2 Board
+        (JD.field "id" JD.string)
+        (JD.field "name" JD.string)
+
+
+addPlayerToTrelloList : TrelloConfig -> TrelloList -> Player -> Cmd Msg
+addPlayerToTrelloList trelloConfig list player =
+    let
+        url =
+            Url.Builder.absolute
+                [ "1/cards"
+                ]
+                (Url.Builder.string "name"
+                    (String.join " "
+                        [ player.name
+                        , player.rankName
+                        , String.fromInt player.rank
+                        ]
+                    )
+                    :: Url.Builder.string "idList" list.id
+                    :: keyAndToken trelloConfig
+                )
+    in
+    Http.post
+        { url = "https://api.trello.com" ++ url
+        , body = Http.emptyBody
+        , expect =
+            Http.expectString TrelloCardCreated
+        }
+
+
+sendToTrello : TrelloConfig -> String -> List Team -> Cmd Msg
+sendToTrello trelloConfig boardId teams =
+    print "Creating lists from teams"
+        :: List.map (teamToListCreateRequest trelloConfig boardId) teams
+        |> Cmd.batch
+
+
+teamToListCreateRequest : TrelloConfig -> String -> Team -> Cmd Msg
+teamToListCreateRequest trelloConfig boardId team =
+    let
+        url =
+            Url.Builder.absolute
+                [ "1/boards"
+                , boardId
+                , "lists"
+                ]
+                (Url.Builder.string "pos" "bottom"
+                    :: Url.Builder.string "name" ("Team " ++ team.name)
+                    :: keyAndToken trelloConfig
+                )
+    in
+    Http.post
+        { url = "https://api.trello.com" ++ url
+        , body = Http.emptyBody
+        , expect =
+            Http.expectJson TrelloListCreated
+                (JD.map (Tuple.pair team) trelloListDecoder)
+        }
+
+
+type alias TrelloList =
+    { id : String
+    , name : String
+    , closed : Bool
+    , pos : Int
+    , idBoard : String
+    }
+
+
+trelloListDecoder : JD.Decoder TrelloList
+trelloListDecoder =
+    JD.map5 TrelloList
+        (JD.field "id" JD.string)
+        (JD.field "name" JD.string)
+        (JD.field "closed" JD.bool)
+        (JD.field "pos" JD.int)
+        (JD.field "idBoard" JD.string)
+
+
+keyAndToken : TrelloConfig -> List Url.Builder.QueryParameter
+keyAndToken config =
+    [ Url.Builder.string "key" config.key
+    , Url.Builder.string "token" config.token
+    ]
+
+
+
+{-
+   Utils
+-}
+
+
+maybeOr : Maybe a -> Maybe a -> Maybe a
+maybeOr ma mb =
+    case ma of
+        Nothing ->
+            mb
+
+        Just _ ->
+            ma
+
+
+
+{-
+   Program
+-}
+
+
+main : Program.StatefulProgram Model Msg CliOptions Extras
 main =
     Program.stateful
         { printAndExitFailure = printAndExitFailure
