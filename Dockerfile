@@ -17,4 +17,4 @@ RUN npm run build:elm && npm run build:ts && npm run build:copy
 
 VOLUME /input
 
-ENTRYPOINT ["build/teamsort.js", "sort"]
+ENTRYPOINT ["build/teamsort"]
