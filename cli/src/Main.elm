@@ -21,12 +21,16 @@ type CliOptions
     = Sort SortOptions
 
 
+type alias TrelloIntegration =
+    { boardName : String
+    , key : Maybe String
+    , token : Maybe String
+    }
+
+
 type alias SortOptions =
     { fileName : String
-    , trello : Bool
-    , boardName : Maybe String
-    , trelloKey : Maybe String
-    , trelloToken : Maybe String
+    , trelloIntegration : Maybe TrelloIntegration
     }
 
 
@@ -34,15 +38,24 @@ programConfig : Program.Config CliOptions
 programConfig =
     Program.config
         |> Program.add
-            (OptionsParser.map Sort
-                (OptionsParser.buildSubCommand "sort" SortOptions
-                    |> OptionsParser.with (Option.requiredPositionalArg "fileName")
-                    |> OptionsParser.with (Option.flag "trello")
-                    |> OptionsParser.with (Option.optionalKeywordArg "boardName")
-                    |> OptionsParser.with (Option.optionalKeywordArg "trello-key")
-                    |> OptionsParser.with (Option.optionalKeywordArg "trello-token")
-                    |> OptionsParser.withDoc "run sorting algorithm based on input file"
+            (OptionsParser.build (\file -> SortOptions file Nothing)
+                |> OptionsParser.with (Option.requiredPositionalArg "fileName")
+                |> OptionsParser.withDoc "run sorting algorithm based on input file"
+                |> OptionsParser.map Sort
+            )
+        |> Program.add
+            (OptionsParser.build
+                (\file trello board key token ->
+                    Just (TrelloIntegration board key token)
+                        |> SortOptions file
                 )
+                |> OptionsParser.with (Option.requiredPositionalArg "fileName")
+                |> OptionsParser.with (Option.flag "trello")
+                |> OptionsParser.with (Option.requiredPositionalArg "boardName")
+                |> OptionsParser.with (Option.optionalKeywordArg "trello-key")
+                |> OptionsParser.with (Option.optionalKeywordArg "trello-token")
+                |> OptionsParser.withDoc "sort and send result to given trello board"
+                |> OptionsParser.map Sort
             )
 
 
@@ -65,7 +78,6 @@ type alias Model =
 type OutputIntegration
     = Trello TrelloConfig String
     | Terminal
-    | Unsupported
 
 
 type alias TrelloConfig =
@@ -99,28 +111,26 @@ init flags cliOptions =
     in
     case cliOptions of
         Sort options ->
-            if options.trello then
-                let
-                    inlineOrEnvConfig =
-                        Maybe.map2 TrelloConfig options.trelloKey options.trelloToken
-                            |> ME.orElse initModel.trelloConfig
-                in
-                case ( inlineOrEnvConfig, options.boardName ) of
-                    ( Just config, Just boardName ) ->
-                        ( { initModel | outputIntegration = Trello config boardName }
-                        , Cmd.batch
-                            [ readFile options.fileName
-                            ]
-                        )
+            case options.trelloIntegration of
+                Just trello ->
+                    let
+                        inlineOrEnvConfig =
+                            Maybe.map2 TrelloConfig trello.key trello.token
+                                |> ME.orElse initModel.trelloConfig
+                    in
+                    case inlineOrEnvConfig of
+                        Just config ->
+                            ( { initModel | outputIntegration = Trello config trello.boardName }
+                            , Cmd.batch
+                                [ readFile options.fileName
+                                ]
+                            )
 
-                    ( _, Nothing ) ->
-                        ( initModel, printAndExitFailure "Board name not found. Use option --boardName to pass it" )
+                        _ ->
+                            ( initModel, printAndExitFailure "Can not find trello config. Exiting." )
 
-                    _ ->
-                        ( initModel, printAndExitFailure "Can not find trello config. Exiting." )
-
-            else
-                ( initModel, readFile options.fileName )
+                Nothing ->
+                    ( initModel, readFile options.fileName )
 
 
 update : CliOptions -> Msg -> Model -> ( Model, Cmd Msg )
@@ -150,13 +160,6 @@ update cliOptions msg model =
                                         )
                                     |> print
                                 , trelloSearch config teams
-                                ]
-
-                        Unsupported ->
-                            Cmd.batch
-                                [ print "Unsupported output integration. Using Terminal."
-                                , teamsToString teams
-                                    |> printAndExitSuccess
                                 ]
             in
             ( model

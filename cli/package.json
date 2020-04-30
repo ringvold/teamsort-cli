@@ -7,9 +7,9 @@
     "teamsort": "build/teamsort.js"
   },
   "scripts": {
-    "build": "concurrently -c cyan,yellow \"npm:build:elm\" \"npm:build:ts\" \"npm:build:copy\"",
+    "build": "yarn build:elm; yarn build:ts; yarn build:copy",
     "build:elm": "elm make src/Main.elm --output build/Main.js --optimize",
-    "build:ts": "tsc src/teamsort.ts --outDir build; chmod +x build/teamsort.js",
+    "build:ts": "tsc src/teamsort.ts --outDir build; cp build/teamsort.js build/teamsort; chmod +x build/teamsort",
     "build:copy": "cp src/teamsorting.mzn build",
     "watch": "concurrently -c cyan,yellow \"npm:watch:elm\" \"npm:watch:ts\" ",
     "watch:elm": "nodemon -w src -e elm --exec \"elm make src/Main.elm --output build/Main.js\"",
