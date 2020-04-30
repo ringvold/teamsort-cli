@@ -169,17 +169,14 @@ update cliOptions msg model =
             case model.outputIntegration of
                 Trello config _ ->
                     ( model
-                    , Cmd.batch <|
-                        print ("Adding players to list " ++ list.name)
-                            :: List.map
-                                (addPlayerToTrelloList config list)
-                                team.players
+                    , print ("Adding players to list " ++ list.name)
+                        :: List.map
+                            (addPlayerToTrelloList config list)
+                            team.players
+                        |> Cmd.batch
                     )
 
                 _ ->
-                    {- This should not happen, but best way I have found so
-                       far to safely acces trello config
-                    -}
                     ( model, Cmd.none )
 
         TrelloListCreated (Err error) ->
@@ -208,16 +205,13 @@ update cliOptions msg model =
                             ( model, print "Could not find the spesified board" )
 
                 _ ->
-                    {- This should not happen, but best way I have found so
-                       far to safely acces trello config
-                    -}
-                    ( model, print "Could not find the spesified board" )
+                    ( model, print "Oops! Weird stuff just happend!" )
 
         TrelloSearchReceived (Err error) ->
             ( model
             , Cmd.batch
-                [ print <| errorcheck error
-                , print "Board search error:"
+                [ print "Fetching boards failed:"
+                , print <| errorcheck error
                 ]
             )
 
