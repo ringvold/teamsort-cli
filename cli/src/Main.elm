@@ -121,11 +121,11 @@ init flags cliOptions =
                         Just config ->
                             ( { initModel | outputIntegration = Trello config trello.boardName }
                             , Cmd.batch
-                                [ readFile options.fileName
-                                ]
+                                readFile
+                                options.fileName
                             )
 
-                        _ ->
+                        Nothing ->
                             ( initModel, printAndExitFailure "Can not find trello config. Exiting." )
 
                 Nothing ->
