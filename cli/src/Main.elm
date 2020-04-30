@@ -39,19 +39,18 @@ programConfig =
     Program.config
         |> Program.add
             (OptionsParser.build (\file -> SortOptions file Nothing)
-                |> OptionsParser.with (Option.requiredPositionalArg "fileName")
+                |> OptionsParser.with (Option.requiredPositionalArg "file-name")
                 |> OptionsParser.withDoc "run sorting algorithm based on input file"
                 |> OptionsParser.map Sort
             )
         |> Program.add
             (OptionsParser.build
-                (\file trello board key token ->
+                (\file board key token ->
                     Just (TrelloIntegration board key token)
                         |> SortOptions file
                 )
-                |> OptionsParser.with (Option.requiredPositionalArg "fileName")
-                |> OptionsParser.with (Option.flag "trello")
-                |> OptionsParser.with (Option.requiredPositionalArg "boardName")
+                |> OptionsParser.with (Option.requiredPositionalArg "file-name")
+                |> OptionsParser.with (Option.requiredPositionalArg "trello-board-name")
                 |> OptionsParser.with (Option.optionalKeywordArg "trello-key")
                 |> OptionsParser.with (Option.optionalKeywordArg "trello-token")
                 |> OptionsParser.withDoc "sort and send result to given trello board"
@@ -519,22 +518,6 @@ keyAndToken config =
     [ Url.Builder.string "key" config.key
     , Url.Builder.string "token" config.token
     ]
-
-
-
-{-
-   Utils
--}
-
-
-maybeOr : Maybe a -> Maybe a -> Maybe a
-maybeOr ma mb =
-    case ma of
-        Nothing ->
-            mb
-
-        Just _ ->
-            ma
 
 
 
