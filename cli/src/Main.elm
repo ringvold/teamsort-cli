@@ -119,7 +119,12 @@ init flags cliOptions =
                     in
                     case inlineOrEnvConfig of
                         Just config ->
-                            ( { initModel | outputIntegration = Trello config trello.boardName }
+                            ( { initModel
+                                | outputIntegration =
+                                    Trello
+                                        config
+                                        trello.boardName
+                              }
                             , readFile options.fileName
                             )
 
@@ -168,9 +173,11 @@ update cliOptions msg model =
                 Trello config _ ->
                     ( model
                     , print ("Adding players to list " ++ list.name)
-                        :: List.map
-                            (addPlayerToTrelloList config list)
-                            team.players
+                        :: (team.players
+                                |> List.sortBy (.rank >> negate)
+                                |> List.indexedMap
+                                    (addPlayerToTrelloList config list)
+                           )
                         |> Cmd.batch
                     )
 
@@ -430,8 +437,8 @@ boardDecoder =
         (JD.field "name" JD.string)
 
 
-addPlayerToTrelloList : TrelloConfig -> TrelloList -> Player -> Cmd Msg
-addPlayerToTrelloList trelloConfig list player =
+addPlayerToTrelloList : TrelloConfig -> TrelloList -> Int -> Player -> Cmd Msg
+addPlayerToTrelloList trelloConfig list index player =
     let
         url =
             Url.Builder.absolute
@@ -445,6 +452,7 @@ addPlayerToTrelloList trelloConfig list player =
                         ]
                     )
                     :: Url.Builder.string "idList" list.id
+                    :: Url.Builder.string "pos" (String.fromInt index)
                     :: keyAndToken trelloConfig
                 )
     in
@@ -577,7 +585,6 @@ port receiveSolverResult : (JD.Value -> msg) -> Sub msg
 
 -- Combining
 -- Based on code from Result.Extra
--- https://github.com/elm-community/result-extra/blob/bb8c2461bf7ed9001f0fdd16e0a143bd39b6c03b/src/Result/Extra.elm#L139
 
 
 {-| Combine a list of results into a single result (holding a list).
