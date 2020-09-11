@@ -1,6 +1,6 @@
-module SolverResult exposing (..)
+module SolverResult exposing (Output, SolverResult, solverResultDecoder)
 
-import Json.Decode exposing (..)
+import Json.Decode exposing (Decoder, andThen, bool, field, int, list, map3, string, succeed)
 
 
 type alias SolverResult =

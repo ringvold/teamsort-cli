@@ -1,18 +1,14 @@
 port module Main exposing (Player, playerParser)
 
-import Array
 import Cli.Option as Option
 import Cli.OptionsParser as OptionsParser
 import Cli.Program as Program
 import Http
 import Json.Decode as JD
-import Json.Encode as JE
 import List
 import List.Extra
 import Maybe.Extra as ME
-import Result.Extra
 import SolverResult exposing (SolverResult, solverResultDecoder)
-import String.Interpolate exposing (interpolate)
 import Tuple
 import Url.Builder
 
@@ -136,7 +132,7 @@ init flags cliOptions =
 
 
 update : CliOptions -> Msg -> Model -> ( Model, Cmd Msg )
-update cliOptions msg model =
+update _ msg model =
     case msg of
         FileReceived content ->
             sortCommand model content
@@ -187,7 +183,7 @@ update cliOptions msg model =
         TrelloListCreated (Err error) ->
             ( model, print <| errorcheck error )
 
-        TrelloCardCreated (Ok resultString) ->
+        TrelloCardCreated (Ok _) ->
             ( model, Cmd.none )
 
         TrelloCardCreated (Err error) ->
@@ -372,7 +368,7 @@ playerParser index content =
                     (String.toInt rank)
                 )
 
-        name :: rankName :: pref :: rank :: lulz ->
+        _ :: _ :: _ :: _ :: _ ->
             Err "ÅH NOES! Too many elements. Does not comprendzz"
 
         [ name, rank ] ->
