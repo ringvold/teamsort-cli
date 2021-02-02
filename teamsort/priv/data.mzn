@@ -1,2 +1,0 @@
-playerRanks = [11,13,9,13,8,16,3,7,9,10,6,6,2,1,8,9,15,4,10,1,5,11,10,10];
-players = ["eask64  mg1.  11","Nazario mge 13","IQstorm gn3.  9","Blue (crimson)  mge 13","Miksern gn2.  8","Chicken lem 16","bna-cooky s3. 3","Darkness  gn1.  7","McDuckian gn3.  9","l0lpalme  gnm 10","Youngfafo sem 6","Keizer Kant sem 6","ClemensBenz[500E] s2. 2","SchousKanser  s1. 1","Buððah  gn2.  8","Shabby  gn3.  9","kaptein snabeltann  le  15","Falchy  s4. 4","Igorrr  gnm 10","antorn3dthe7th  s1. 1","Samuelps  se  5","D3Railed  mge 11","lil gab gnm 10","Le pipe gnm 10"];

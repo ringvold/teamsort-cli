@@ -23,7 +23,7 @@ array[Rank] of int: rankPower =
 % Avoid recursive definition between noOfPlayers and rank
 % by defining the inputs in an array of unspecified size.
 array[int] of Rank: playerRanks;
-array[Players] of string: players;
+% array[Players] of string: players;
 array[Players] of var {0} union Teams: preference;
 
 
@@ -69,4 +69,4 @@ constraint forall(t1 in Teams, t2 in Teams where t1 < t2) (
 
 % Symmetry breaking constraint => last team - first team = greates diff
 solve minimize score[noOfTeams] - score[1];
-output outputJSON();
+%output outputJSON();
