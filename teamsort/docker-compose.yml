@@ -13,6 +13,7 @@ services:
     build: .
     command: mix phx.server
     # command: /bin/bash
+    # user: "${UID}:${GID}"
     volumes:
       - .:/opt/app
       # - build:/opt/app/_build
