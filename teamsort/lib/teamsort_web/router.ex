@@ -17,7 +17,7 @@ defmodule TeamsortWeb.Router do
   scope "/", TeamsortWeb do
     pipe_through :browser
 
-    live "/", PageLive, :index
+    live "/", App
   end
 
   # Other scopes may use custom stacks.
