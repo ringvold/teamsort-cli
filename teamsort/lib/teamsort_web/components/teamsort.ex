@@ -19,9 +19,7 @@ defmodule TeamsortWeb.Components.Teamsort do
       <Form for={{ :players }} submit="solve" change="change" opts={{ autocomplete: "off" }}>
         <div class="field">
           <Label class="label">Players</Label>
-          <TextArea class="textarea has-text-light" rows="10">
-            {{ @playersString }}
-          </TextArea>
+          <TextArea class="textarea has-text-light" rows="10" value={{ @playersString }}></TextArea>
         </div>
         <div class="field">
           <div class="control">
@@ -54,10 +52,14 @@ defmodule TeamsortWeb.Components.Teamsort do
   def handle_event("change", value, socket) do
     case parse_textarea(value["players"]) do
       {:ok, players, _rest, _, _, _} ->
-        {:noreply, assign(socket, players: players)}
+        {:noreply,
+         assign(socket,
+           players: players,
+           playersString: List.first(value["players"])
+         )}
 
       {:error, _something, _rest, _, _, _} ->
-        {:noreply, assign(socket, playersString: List.first(value["players"]))}
+        {:noreply, socket}
     end
   end
 
