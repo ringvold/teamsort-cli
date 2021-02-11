@@ -9,7 +9,7 @@ config :teamsort, Teamsort.Repo,
   username: "postgres",
   password: "postgres",
   database: "teamsort_test#{System.get_env("MIX_TEST_PARTITION")}",
-  hostname: "localhost",
+  hostname: "db",
   pool: Ecto.Adapters.SQL.Sandbox
 
 # We don't run a server during test. If one is required,

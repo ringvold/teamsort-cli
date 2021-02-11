@@ -3,16 +3,15 @@ defmodule TeamsortWeb.Components.Teamsort do
 
   alias Teamsort.Solver
   alias Teamsort.Player
+  alias Teamsort.PlayerParser
 
   alias Surface.Components.Form.TextArea
   alias Surface.Components.Form.Label
-  alias Surface.Components.Form.Submit
-  alias Surface.Components.Form.Field
   alias Surface.Components.Form
 
-  data players, :list, default:  []
-  data playersString, :string, default: ""
-  data teams, :list, default:  []
+  data(players, :list, default: [])
+  data(playersString, :string, default: "")
+  data(teams, :list, default: [])
 
   def render(assigns) do
     ~H"""
@@ -54,9 +53,10 @@ defmodule TeamsortWeb.Components.Teamsort do
 
   def handle_event("change", value, socket) do
     case parse_textarea(value["players"]) do
-      {:ok, players } ->
+      {:ok, players, _rest, _, _, _} ->
         {:noreply, assign(socket, players: players)}
-      {:error, _err} ->
+
+      {:error, _something, _rest, _, _, _} ->
         {:noreply, assign(socket, playersString: List.first(value["players"]))}
     end
   end
@@ -64,10 +64,11 @@ defmodule TeamsortWeb.Components.Teamsort do
   def handle_event("solve", value, socket) do
     if List.first(value["players"]) do
       case parse_textarea(value["players"]) do
-        {:ok, players } ->
+        {:ok, players, _rest, _, _, _} ->
           teams = Solver.solve(players)
           {:noreply, assign(socket, teams: teams)}
-        {:error, _err} ->
+
+        {:error, _something, _rest, _, _, _} ->
           {:noreply, socket}
       end
     else
@@ -75,44 +76,16 @@ defmodule TeamsortWeb.Components.Teamsort do
     end
   end
 
-
-  @spec player_from_list([...]) :: %Teamsort.Player{
-          name: String.t(),
-          rank: integer(),
-          rank_name: String.t(),
-          team: integer()
-        }
-
-  def player_from_list(list) do
-    try do
-      case list do
-        [name, rank_name, team, rank] ->
-          %Player{name: name, rank: String.to_integer(rank), rank_name: rank_name, team: team}
-        [name, rank_name, rank] ->
-          %Player{name: name, rank: String.to_integer(rank), rank_name: rank_name}
-        [name, rank] ->
-          %Player{name: name, rank: String.to_integer(rank)}
-        _ ->
-          throw "Could not parse player: #{list}"
-      end
-    catch
-      x -> throw "Error parsing player #{list}: #{x}"
-    end
-  end
-
   @spec parse_textarea(any) :: {:error, String.t()} | {:ok, [Player]}
   def parse_textarea(value) do
     try do
-      {:ok, value
-        |> List.first
-        |> String.split("\n")
-        |> Enum.filter(&(&1 != ""))
-        |> Enum.map(&(String.split(&1, ",")))
-        |> Enum.map(&player_from_list/1)
-      }
+      value
+      |> List.first()
+      |> PlayerParser.parse()
     catch
-      x -> IO.puts x; {:error, "Could not parse players. Got #{x}"}
+      x ->
+        IO.puts(x)
+        {:error, "Could not parse players. Got #{x}"}
     end
-
   end
 end
