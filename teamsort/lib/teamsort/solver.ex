@@ -6,6 +6,7 @@ defmodule Teamsort.Solver do
     result_to_teams(players, result)
   end
 
+  @spec run_solver([Player]) :: {:ok, any()} | {:error, any()}
   def run_solver(players) do
     MinizincSolver.solve_sync(
       Path.join(:code.priv_dir(:teamsort), "model.mzn"),
@@ -13,11 +14,20 @@ defmodule Teamsort.Solver do
         playerRanks: Enum.map(players, & &1.rank),
         preference: Enum.map(players, & &1.team)
       },
+      # TODO: make solver selectable
       solver: "org.minizinc.mip.coin-bc"
-      # time_limit: 1000
+      # time_limit: 5000
     )
   end
 
+  @spec result_to_teams(
+          [Player],
+          atom
+          | %{
+              :summary => atom | %{:last_solution => atom | map, optional(any) => any},
+              optional(any) => any
+            }
+        ) :: list
   def result_to_teams(players, minizinc_response) do
     team_ints = minizinc_response.summary.last_solution.data["team"]
 
