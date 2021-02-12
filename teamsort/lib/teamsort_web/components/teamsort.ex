@@ -20,7 +20,12 @@ defmodule TeamsortWeb.Components.Teamsort do
       <Form for={{ :players }} submit="solve" change="change" opts={{ autocomplete: "off" }}>
         <div class="field">
           <Label class="label">Players</Label>
-          <TextArea class="textarea has-text-light" rows="10" value={{ @players_raw }}></TextArea>
+          <TextArea
+            class="textarea has-text-light"
+            rows="10"
+            value={{ @players_raw }}
+            opts={{ placeholder: "Example:\nl0lpalme,12\nMadde,mg2,12"}}
+            ></TextArea>
         </div>
         <div class="field">
           <div class="control">
